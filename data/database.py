@@ -1,6 +1,7 @@
 import config
 import pyodbc
 import pickle
+import json
 import pandas as pd
 
 # Connection and configuration details
@@ -11,6 +12,7 @@ def connect_to_database():
     connection = pyodbc.connect(connection_string)
     return connection
 
+# Tickers
 def store_tickers(tickers):
     connection = connect_to_database()
     # Loop through tickers and insert data into SQL Server
@@ -18,32 +20,8 @@ def store_tickers(tickers):
         # Serialize the ticker object
         pickled_ticker = pickle.dumps(ticker)
         # Insert the serialized ticker into the database
-        connection.execute("INSERT INTO Tickers (Symbol, TickerData) VALUES (?, ?)", (ticker.ticker, pickled_ticker))
+        connection.execute("INSERT INTO Tickers (TickerData) VALUES (?)", (pickled_ticker))
     # Commit the changes and close the connection
-    connection.commit()
-    connection.close()
-
-def store_articles(articles):
-    connection = connect_to_database()
-    cursor = connection.cursor()
-    for row in articles.itertuples(index=False):
-        result = cursor.execute("SELECT ID FROM Tickers WHERE Symbol = ?", row.ticker).fetchone()
-        if result is not None:
-            ticker_id = result[0]
-        else:
-            ticker_id = None # Or whatever default value we want to use
-        cursor.execute("INSERT INTO Articles (TickerID, Title, Description, Sentiment) VALUES (?, ?, ?, ?)",
-                       ticker_id, row.title, row.description, row.sentiment)
-    connection.commit()
-    connection.close()
-
-def store_optimized_portfolio(portfolio_type, portfolio_object):
-    connection = connect_to_database()
-    cursor = connection.cursor()
-    
-    serialized_object = pickle.dumps(portfolio_object)
-    
-    cursor.execute("INSERT INTO OptimizedPortfolios (PortfolioType, PortfolioObject) VALUES (?, ?)", (portfolio_type, serialized_object))
     connection.commit()
     connection.close()
 
@@ -62,6 +40,21 @@ def load_tickers():
     cursor.close()
     return tickers
 
+# Articles
+def store_articles(articles):
+    connection = connect_to_database()
+    cursor = connection.cursor()
+    for row in articles.itertuples(index=False):
+        result = cursor.execute("SELECT ID FROM Tickers WHERE Symbol = ?", row.ticker).fetchone()
+        if result is not None:
+            ticker_id = result[0]
+        else:
+            ticker_id = None # Or whatever default value we want to use
+        cursor.execute("INSERT INTO Articles (TickerID, Title, Description, Sentiment) VALUES (?, ?, ?, ?)",
+                       ticker_id, row.title, row.description, row.sentiment)
+    connection.commit()
+    connection.close()
+
 def load_articles():
     connection = connect_to_database()
     cursor = connection.cursor()
@@ -71,19 +64,57 @@ def load_articles():
     articles = pd.DataFrame(articles_data, columns=["ticker", "title", "description", "sentiment"])
     return articles
 
-def load_optimized_portfolio(portfolio_type):
+# Optimized portfolios
+def store_optimized_portfolio(portfolio):
     connection = connect_to_database()
     cursor = connection.cursor()
     
-    result = cursor.execute("SELECT PortfolioObject FROM OptimizedPortfolios WHERE PortfolioType = ?", (portfolio_type)).fetchone()
-    if result is not None:
-        serialized_object = result[0]
-    else:
-        serialized_object = None
+    name = portfolio.name
+    serialized_weights = json.dumps(portfolio.weights)
+
+    mu, sigma, sharpe = portfolio.portfolio_performance()
+    query = """
+        INSERT INTO OptimizedPortfolios (Name, CleanWeights, ExpectedReturns, Volatility, SharpeRatio)
+        VALUES (?, ?, ?, ?, ?)
+    """
+    params = (name, serialized_weights, mu, sigma, sharpe)
+    cursor.execute(query, params)
+    connection.commit()
     connection.close()
-    
-    if serialized_object is None:
-        portfolio_object = None  # Or whatever default object we want to use
-    else:
-        portfolio_object = pickle.loads(serialized_object)
-    return portfolio_object
+
+def load_optimized_portfolio(name):
+    connection = connect_to_database()
+    cursor = connection.cursor()
+    query = "SELECT Name, CleanWeights, ExpectedReturns, Volatility, SharpeRatio FROM OptimizedPortfolios"
+    cursor.execute(query)
+    result = cursor.fetchone()
+
+    if result is None:
+        return None
+
+    weights = json.loads(result[1])
+    expected_returns = result[2]
+    volatility = result[3]
+    sharpe_ratio = result[4]
+
+    return name, weights, expected_returns, volatility, sharpe_ratio
+
+def load_all_optimized_portfolios():
+    connection = connect_to_database()
+    cursor = connection.cursor()
+    query = "SELECT * FROM OptimizedPortfolios"
+    cursor.execute(query)
+    results = cursor.fetchall()
+
+    portfolios = []
+    for row in results:
+        name = row[1]
+        serialized_weights = row[2]
+        weights = json.loads(serialized_weights)
+        expected_returns = row[3]
+        volatility = row[4]
+        sharpe_ratio = row[5]
+        portfolio = name, weights, expected_returns, volatility, sharpe_ratio
+        portfolios.append(portfolio)
+
+    return portfolios

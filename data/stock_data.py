@@ -1,13 +1,23 @@
 import yfinance as yf
 import pandas as pd
-import database as db
+from database import load_tickers, store_tickers
 
-def fetch_stock_data(tickers, start_date='2021-01-01', end_date='2022-01-01'):
-    stock_data = yf.download(tickers, start=start_date, end=end_date)['Adj Close']
+def fetch_stock_data(tickers, start_date='2021-01-01', end_date='2022-01-01', load_from_database=False):
+    """
+    Fetches stock data for a list of stocks from Yahoo Finance.
+    :param tickers: list of stocks to fetch data for
+    :param start_date: start date for fetching data
+    :param end_date: end date for fetching data
+    :param load_from_database: whether to load tickers from database or fetch them from Yahoo Finance
+    :return: dictionary of stock data for each stock
+    """
+    if load_from_database:
+        # Load tickers from database
+        stock_data = load_tickers()
+    else:
+        stock_data = yf.download(tickers, start=start_date, end=end_date)['Adj Close']
+        store_tickers(stock_data)
     return stock_data
-
-def save_stock_data(tickers):
-    db.store_tickers(tickers)
 
 def select_low_correlation_stocks(stock_data, n_stocks=100):
     # Calculate the correlation matrix
