@@ -1,6 +1,6 @@
 import yfinance as yf
 import pandas as pd
-from database import load_tickers, store_tickers
+from .database import store_tickers, load_tickers
 
 def fetch_stock_data(tickers, start_date='2021-01-01', end_date='2022-01-01', load_from_database=False):
     """
@@ -15,8 +15,9 @@ def fetch_stock_data(tickers, start_date='2021-01-01', end_date='2022-01-01', lo
         # Load tickers from database
         stock_data = load_tickers()
     else:
+        # TODO: date range handling
         stock_data = yf.download(tickers, start=start_date, end=end_date)['Adj Close']
-        store_tickers(stock_data)
+        # store_tickers(stock_data)
     return stock_data
 
 def select_low_correlation_stocks(stock_data, n_stocks=100):

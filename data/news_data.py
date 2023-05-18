@@ -1,7 +1,7 @@
-import config
+from . import config
 import requests
 import pandas as pd
-from data.database import load_articles, store_articles
+from .database import load_articles, store_articles
 from transformers import BertTokenizer, BertForSequenceClassification
 from transformers import pipeline
 from datetime import datetime, timedelta
@@ -51,10 +51,10 @@ def fetch_news_data(tickers, n_articles=1, load_from_database=False):
 
         if results:
             # Extract sentiment scores from the results
-            articles["sentiment"] = [result['label'] for result in results] # type: ignore
+            articles["sentiment"] = [result['score'] for result in results] # type: ignore
 
         # Store articles in database
-        store_articles(articles)
+        # store_articles(articles)
 
     return articles
 

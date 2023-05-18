@@ -1,7 +1,7 @@
 from data.stock_data import fetch_stock_data, select_low_correlation_stocks, preprocess_data
 from data.news_data import fetch_news_data, get_sentiment_scores
 
-from data.database import load_tickers, load_articles, load_optimized_portfolio, store_tickers, store_optimized_portfolio
+from data.database import load_optimized_portfolio, store_optimized_portfolio
 
 from optimization_models.PortfolioOptimizer import PortfolioOptimizer
 from optimization_models.risk_tolerance import optimize_portfolio_risk_tolerance, calculate_risk_tolerance
@@ -15,12 +15,12 @@ tickers = fetch_stock_data(
            "ACN", "DIS", "GILD", "F", "TSLA"],
            load_from_database=False)
 
-# Fetch news data for the 10 low-correlation stocks
-news_data = fetch_news_data(tickers, n_articles=100, load_from_database=False)
-sentiment_scores = get_sentiment_scores(news_data)
-
 # Select the top 15 low-correlation stocks
-low_correlation_stocks = select_low_correlation_stocks(tickers, n_stocks=10)
+low_correlation_stocks = select_low_correlation_stocks(tickers, n_stocks=15)
+
+# Fetch news data for the 10 low-correlation stocks
+news_data = fetch_news_data(low_correlation_stocks, n_articles=10, load_from_database=False)
+sentiment_scores = get_sentiment_scores(news_data)
 
 # Fetch stock data for the 10 low-correlation stocks
 stock_data = fetch_stock_data(low_correlation_stocks)
@@ -39,6 +39,5 @@ weights = [portfolio.clean_weights for portfolio in portfolios]
 # print_weights.py
 [print(f"{portfolio.name.capitalize()} weights: {weights}") for portfolio, weights in zip(portfolios, weights)]
 
-# plot_portfolios.py, rt_port, hrp_port]
-
+# plot_portfolios.py
 plot_portfolios(portfolios)

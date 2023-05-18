@@ -31,7 +31,7 @@ class OptimizedPortfolio:
             return cls(*optimized_portfolio)
 
 class PortfolioOptimizer:
-    def __init__(self, stock_data, risk_tolerance, sentiment_scores):
+    def __init__(self, stock_data, risk_tolerance, sentiment_scores=None):
         self.stock_data = stock_data
         self.risk_tolerance = risk_tolerance
         self.sentiment_scores = sentiment_scores
@@ -71,6 +71,7 @@ class PortfolioOptimizer:
         cov_matrix = CovarianceShrinkage(self.stock_data).ledoit_wolf()
         market_prior = expected_returns.capm_return(self.stock_data)
 
+        # TODO: Sentiment scores or user's views?
         viewdict = {}
         if self.sentiment_scores is not None:
             # Use sentiment scores to create absolute views
@@ -84,6 +85,7 @@ class PortfolioOptimizer:
                 "F": -0.05  # Stock 3 will return -5%
             }
 
+        # TODO: Alter delta to risk tolerance (see risk_tolerance.py)
         delta = 2  # Risk aversion parameter
         bl = BlackLittermanModel(cov_matrix, pi=market_prior, absolute_views=viewdict, delta=delta)
 
@@ -92,6 +94,7 @@ class PortfolioOptimizer:
 
         # Calculate optimal weights using Efficient Frontier with the Black-Litterman expected returns and covariance matrix
         ef = EfficientFrontier(posterior_returns, posterior_cov_matrix)
+        # TODO: Check if this is the correct way to calculate the target return
         ef.efficient_return(target_return=0.1)
         
         op = OptimizedPortfolio("black-litterman", ef.clean_weights(), *ef.portfolio_performance(verbose=True))

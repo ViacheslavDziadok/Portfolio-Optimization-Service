@@ -1,4 +1,4 @@
-import config
+from . import config
 import pyodbc
 import pickle
 import json
@@ -20,7 +20,7 @@ def store_tickers(tickers):
         # Serialize the ticker object
         pickled_ticker = pickle.dumps(ticker)
         # Insert the serialized ticker into the database
-        connection.execute("INSERT INTO Tickers (TickerData) VALUES (?)", (pickled_ticker))
+        connection.execute("INSERT INTO Tickers (TickerObject) VALUES (?)", (pickled_ticker))
     # Commit the changes and close the connection
     connection.commit()
     connection.close()
@@ -28,7 +28,7 @@ def store_tickers(tickers):
 def load_tickers():
     connection = connect_to_database()
     cursor = connection.cursor()
-    cursor.execute("SELECT TickerData FROM Tickers")
+    cursor.execute("SELECT TickerObject FROM Tickers")
     rows = cursor.fetchall()
     # Deserialize each ticker object and append to a list
     tickers = []
@@ -102,7 +102,7 @@ def load_optimized_portfolio(name):
 def load_all_optimized_portfolios():
     connection = connect_to_database()
     cursor = connection.cursor()
-    query = "SELECT * FROM OptimizedPortfolios"
+    query = "SELECT Name, CleanWeights, ExpectedReturns, Volatility, SharpeRatio FROM OptimizedPortfolios"
     cursor.execute(query)
     results = cursor.fetchall()
 
