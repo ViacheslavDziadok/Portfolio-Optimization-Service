@@ -25,4 +25,4 @@ def plot_portfolios(portfolios):
     plt.title('Portfolio Optimization Comparison')
     plt.legend()
     plt.grid()
-    plt.show()
+    plt.show(block=True)

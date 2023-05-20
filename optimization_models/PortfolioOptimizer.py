@@ -31,10 +31,10 @@ class OptimizedPortfolio:
             return cls(*optimized_portfolio)
 
 class PortfolioOptimizer:
-    def __init__(self, stock_data, risk_tolerance, sentiment_scores=None):
+    def __init__(self, stock_data, risk_tolerance=None, news_sentiment_scores=None):
         self.stock_data = stock_data
+        self.news_sentiment_scores = news_sentiment_scores
         self.risk_tolerance = risk_tolerance
-        self.sentiment_scores = sentiment_scores
 
     def optimize(self, model):
         match model.lower():
@@ -73,16 +73,16 @@ class PortfolioOptimizer:
 
         # TODO: Sentiment scores or user's views?
         viewdict = {}
-        if self.sentiment_scores is not None:
+        if self.news_sentiment_scores is not None:
             # Use sentiment scores to create absolute views
             for ticker in self.stock_data.columns:
-                if ticker in self.sentiment_scores:
-                    viewdict[ticker] = self.sentiment_scores[ticker] / 100.0
+                if ticker in self.news_sentiment_scores:
+                    viewdict[ticker] = self.news_sentiment_scores[ticker] / 100.0
         else:
             # Example views on stocks (replace with your views)
             viewdict = {
-                "TSLA": 0.1,  # Stock 0 will return 10%
-                "F": -0.05  # Stock 3 will return -5%
+                # "TSLA": 0.1,  # Stock 0 will return 10%
+                # "F": -0.05  # Stock 3 will return -5%
             }
 
         # TODO: Alter delta to risk tolerance (see risk_tolerance.py)
@@ -95,14 +95,24 @@ class PortfolioOptimizer:
         # Calculate optimal weights using Efficient Frontier with the Black-Litterman expected returns and covariance matrix
         ef = EfficientFrontier(posterior_returns, posterior_cov_matrix)
         # TODO: Check if this is the correct way to calculate the target return
-        ef.efficient_return(target_return=0.1)
+        ef.efficient_return(target_return=0.4)
         
         op = OptimizedPortfolio("black-litterman", ef.clean_weights(), *ef.portfolio_performance(verbose=True))
         return op
 
     # Hierarchical Risk Parity
     def optimize_hrp(self) -> OptimizedPortfolio:
-        hrp = HRPOpt(self.stock_data)
+        # Normalize the stock data
+        returns = self.stock_data.pct_change().dropna()
+
+        # Optimize portfolio using HRP
+        hrp = HRPOpt(returns)
         hrp.optimize()
-        op = OptimizedPortfolio("hrp", hrp.clean_weights(), *hrp.portfolio_performance(verbose=True))
+
+        #Calculate optimized weights and portfolio performance
+        weights = hrp.clean_weights()
+        mu, sigma, sharpe_ratio = hrp.portfolio_performance(verbose=True)
+
+        # Create OptimizedPortfolio object
+        op = OptimizedPortfolio("hrp", weights, mu, sigma, sharpe_ratio)
         return op

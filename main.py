@@ -16,21 +16,21 @@ tickers = fetch_stock_data(
            load_from_database=False)
 
 # Select the top 15 low-correlation stocks
-low_correlation_stocks = select_low_correlation_stocks(tickers, n_stocks=15)
-
-# Fetch news data for the 10 low-correlation stocks
-news_data = fetch_news_data(low_correlation_stocks, n_articles=10, load_from_database=False)
-sentiment_scores = get_sentiment_scores(news_data)
+# low_correlation_stocks = select_low_correlation_stocks(tickers, n_stocks=15)
 
 # Fetch stock data for the 10 low-correlation stocks
-stock_data = fetch_stock_data(low_correlation_stocks)
+# stock_data = fetch_stock_data(low_correlation_stocks)
+
+# Fetch news data for the 10 low-correlation stocks
+# news_data = fetch_news_data(stock_data, n_articles=10, load_from_database=False)
+# sentiment_scores = get_sentiment_scores(news_data)
 
 # preprocess_data.py
-clean_stock_data = preprocess_data(stock_data)
+clean_stock_data = preprocess_data(tickers)
 risk_tolerance = calculate_risk_tolerance(35, 0.5, 0.5)
 
 # optimize_portfolios.py
-port_opt = PortfolioOptimizer(clean_stock_data, risk_tolerance, news_data)
+port_opt = PortfolioOptimizer(clean_stock_data, risk_tolerance)
 portfolios = port_opt.optimize("all")
 
 # get_weights.py
