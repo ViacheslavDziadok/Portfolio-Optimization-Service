@@ -40,26 +40,31 @@ def plot_portfolios(portfolios):
     
     colorscale = 'Portland'  # Specify the desired colorscale
     colors = sample_colorscale(colorscale, minmax_scale(sharpe_ratios, (0,1))) # type: ignore
+    
+    min_sharpe = min(sharpe_ratios)
+    max_sharpe = max(sharpe_ratios)
 
     for i, portfolio in enumerate(portfolios):
         # Create a scatter plot
-        scatter = go.Scatter(x=portfolio_volatilities,
-                            y=portfolio_returns,
+        scatter = go.Scatter(x=[portfolio_returns[i]],
+                            y=[portfolio_volatilities[i]],
                             mode='markers+text',
-                            text=text,
-                            hovertext=hovertext,
+                            text=[text[i]],
+                            hovertext=[hovertext[i]],
                             hovertemplate='%{hovertext}<extra></extra>',
                             textposition='bottom center',
                             marker=dict(
                                 size=15,
-                                color=sharpe_ratios,
+                                color=colors[i],
                                 colorscale=colorscale,
-                                showscale=True,
+                                cmin=min_sharpe,  # Minimum value for colorbar
+                                cmax=max_sharpe,  # Maximum value for colorbar
                                 colorbar=dict(
                                     title='Sharpe Ratio',
                                     titlefont=dict(size=14),
                                     tickformat='.2f',
                                 ),
+                                showscale=True,
                                 line=dict(
                                     color='DarkSlateGrey',
                                     width=0.5
@@ -103,6 +108,7 @@ def plot_portfolios(portfolios):
         fig.add_trace(bar_chart, row=2, col=1)
 
     fig.update_layout(
+        coloraxis=dict(colorscale=colorscale),
         title=f'{title}<br><i>All Portfolios<i>',
         autosize=True,
         plot_bgcolor='rgb(243, 243, 243)',
@@ -132,12 +138,12 @@ def plot_portfolios(portfolios):
     )
 
     # Add a grid and axis line customization for the first subplot
-    fig.update_xaxes(showgrid=True, gridwidth=0.5, gridcolor='lightgray', zeroline=False, title_text='Volatility (Standard Deviation)', tickformat='.1%', tickfont=dict(size=10), row=1, col=1)
-    fig.update_yaxes(showgrid=True, gridwidth=0.5, gridcolor='lightgray', zeroline=False, title_text='Expected Returns', tickformat='.1%', tickfont=dict(size=10), row=1, col=1)
+    fig.update_xaxes(showgrid=True, gridwidth=0.5, gridcolor='lightgray', zeroline=False, title_text='<b>Expected Returns</b>', tickformat='.1%', tickfont=dict(size=10), row=1, col=1)
+    fig.update_yaxes(showgrid=True, gridwidth=0.5, gridcolor='lightgray', zeroline=False, title_text='<b>Volatility (Standard Deviation)</b>', tickformat='.1%', tickfont=dict(size=10), row=1, col=1)
     
     # Add a grid and axis line customization for the second subplot
-    fig.update_xaxes(showgrid=True, gridwidth=0.5, gridcolor='lightgray', zeroline=False, title_text='Asset Names', row=2, col=1)
-    fig.update_yaxes(showgrid=True, gridwidth=0.5, gridcolor='lightgray', zeroline=False, title_text='Asset Weights', tickformat='.1%', row=2, col=1)
+    fig.update_xaxes(showgrid=True, gridwidth=0.5, gridcolor='lightgray', zeroline=False, title_text='<b>Asset Names</b>', row=2, col=1)
+    fig.update_yaxes(showgrid=True, gridwidth=0.5, gridcolor='lightgray', zeroline=False, title_text='<b>Asset Weights</b>', tickformat='.1%', row=2, col=1)
 
     # Move the title to the right
     fig.update_layout(title_x=0.475, title_y=0.95)
@@ -145,10 +151,10 @@ def plot_portfolios(portfolios):
     fig.show()
 
 def zoom(portfolio_returns, portfolio_volatilities, zoom_percent):
-    x_max = max(portfolio_volatilities)
-    y_max = max(portfolio_returns)
-    x_min = min(portfolio_volatilities)
-    y_min = min(portfolio_returns)
+    x_max = max(portfolio_returns)
+    y_max = max(portfolio_volatilities)
+    x_min = min(portfolio_returns)
+    y_min = min(portfolio_volatilities)
 
     zoom_percent = zoom_percent # Adjust the zoom level here
 
