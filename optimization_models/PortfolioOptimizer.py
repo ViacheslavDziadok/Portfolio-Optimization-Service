@@ -1,5 +1,6 @@
 from pypfopt import expected_returns, CovarianceShrinkage
 from pypfopt import BlackLittermanModel, EfficientFrontier, HRPOpt
+from pypfopt import exceptions
 from data.database import store_optimized_portfolio, load_optimized_portfolio, load_all_optimized_portfolios
 
 class OptimizedPortfolio:
@@ -22,7 +23,10 @@ class OptimizedPortfolio:
 
     @classmethod
     def from_portfolio(cls, portfolio):
-        return cls(portfolio.name, portfolio.clean_weights, portfolio.expected_returns, portfolio.volatility, portfolio.sharpe_ratio)
+        if isinstance(portfolio, OptimizedPortfolio):
+            return cls(portfolio.name, portfolio.clean_weights, portfolio.expected_returns, portfolio.volatility, portfolio.sharpe_ratio)
+        else:
+            return cls(portfolio[0], portfolio[1], portfolio[2], portfolio[3], portfolio[4])
 
     @classmethod
     def load(cls, name):
@@ -31,7 +35,7 @@ class OptimizedPortfolio:
             return cls(*optimized_portfolio)
 
 class PortfolioOptimizer:
-    def __init__(self, stock_data, risk_tolerance=None, news_sentiment_scores=None):
+    def __init__(self, stock_data, risk_tolerance=1.0, news_sentiment_scores=None):
         self.stock_data = stock_data
         self.news_sentiment_scores = news_sentiment_scores
         self.risk_tolerance = risk_tolerance
@@ -49,7 +53,8 @@ class PortfolioOptimizer:
             case _:
                 raise ValueError("Invalid optimization model")
 
-    def load(self, model):
+    @staticmethod
+    def load(model):
         model_name = model.lower()
         match model_name:
             case "mean-variance" | "black-litterman" | "hrp":
@@ -59,15 +64,27 @@ class PortfolioOptimizer:
             case _:
                 raise ValueError("Invalid optimization model")
 
+
     def optimize_mean_variance(self) -> OptimizedPortfolio:
         mu = expected_returns.mean_historical_return(self.stock_data)
         cov_matrix = CovarianceShrinkage(self.stock_data).ledoit_wolf()
+
         ef = EfficientFrontier(mu, cov_matrix)
+
         ef.min_volatility()
-        op = OptimizedPortfolio("mean-variance", ef.clean_weights(), *ef.portfolio_performance(verbose=True))
+
+        # Calculate optimized weights and portfolio performance
+        portfolio_name = "Mean-Variance"
+        weights = ef.clean_weights()
+        mu, sigma, sharpe_ratio = ef.portfolio_performance(verbose=True)
+
+        # Create OptimizedPortfolio object
+        op = OptimizedPortfolio(portfolio_name, weights, mu, sigma, sharpe_ratio)
         return op
 
+
     def optimize_black_litterman(self) -> OptimizedPortfolio:
+        # Calculate expected returns and covariance matrix
         cov_matrix = CovarianceShrinkage(self.stock_data).ledoit_wolf()
         market_prior = expected_returns.capm_return(self.stock_data)
 
@@ -85,34 +102,47 @@ class PortfolioOptimizer:
                 # "F": -0.05  # Stock 3 will return -5%
             }
 
-        # TODO: Alter delta to risk tolerance (see risk_tolerance.py)
-        delta = 2  # Risk aversion parameter
-        bl = BlackLittermanModel(cov_matrix, pi=market_prior, absolute_views=viewdict, delta=delta)
+        risk_aversion = int(1 / self.risk_tolerance)  # Risk aversion parameter
+        bl = BlackLittermanModel(cov_matrix, pi=market_prior, absolute_views=viewdict, risk_aversion=risk_aversion)
 
+        # Calculate posterior returns and covariance matrix
         posterior_returns = bl.bl_returns()
         posterior_cov_matrix = bl.bl_cov()
 
         # Calculate optimal weights using Efficient Frontier with the Black-Litterman expected returns and covariance matrix
         ef = EfficientFrontier(posterior_returns, posterior_cov_matrix)
-        # TODO: Check if this is the correct way to calculate the target return
-        ef.efficient_return(target_return=0.4)
+
+        # 
+        try:
+            ef.max_sharpe()
+        except exceptions.OptimizationError:
+            print("OptimizationError: Could not find a portfolio with the given constraints. Trying another solver...")
+            ef = EfficientFrontier(posterior_returns, posterior_cov_matrix)
+            ef.efficient_risk(target_volatility=0.3)
         
-        op = OptimizedPortfolio("black-litterman", ef.clean_weights(), *ef.portfolio_performance(verbose=True))
+        # Calculate optimized weights and portfolio performance
+        portfolio_name = "Black-Litterman"
+        weights = ef.clean_weights()
+        mu, sigma, sharpe_ratio = ef.portfolio_performance(verbose=True)
+
+        # Create OptimizedPortfolio object
+        op = OptimizedPortfolio(portfolio_name, weights, mu, sigma, sharpe_ratio)
         return op
 
-    # Hierarchical Risk Parity
+
     def optimize_hrp(self) -> OptimizedPortfolio:
         # Normalize the stock data
-        returns = self.stock_data.pct_change().dropna()
+        returns = self.stock_data.pct_change()
 
         # Optimize portfolio using HRP
         hrp = HRPOpt(returns)
         hrp.optimize()
 
-        #Calculate optimized weights and portfolio performance
+        # Calculate optimized weights and portfolio performance
+        portfolio_name = "Hierarchical Risk Parity"
         weights = hrp.clean_weights()
         mu, sigma, sharpe_ratio = hrp.portfolio_performance(verbose=True)
 
         # Create OptimizedPortfolio object
-        op = OptimizedPortfolio("hrp", weights, mu, sigma, sharpe_ratio)
+        op = OptimizedPortfolio(portfolio_name, weights, mu, sigma, sharpe_ratio)
         return op

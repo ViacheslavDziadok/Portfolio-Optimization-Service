@@ -70,14 +70,14 @@ def store_optimized_portfolio(portfolio):
     cursor = connection.cursor()
     
     name = portfolio.name
-    serialized_weights = json.dumps(portfolio.weights)
+    serialized_clean_weights = json.dumps(portfolio.clean_weights)
+    mu, sigma, sharpe = portfolio.expected_returns, portfolio.volatility, portfolio.sharpe_ratio
 
-    mu, sigma, sharpe = portfolio.portfolio_performance()
     query = """
         INSERT INTO OptimizedPortfolios (Name, CleanWeights, ExpectedReturns, Volatility, SharpeRatio)
         VALUES (?, ?, ?, ?, ?)
     """
-    params = (name, serialized_weights, mu, sigma, sharpe)
+    params = (name, serialized_clean_weights, mu, sigma, sharpe)
     cursor.execute(query, params)
     connection.commit()
     connection.close()
@@ -92,6 +92,7 @@ def load_optimized_portfolio(name):
     if result is None:
         return None
 
+    name = result[0]
     weights = json.loads(result[1])
     expected_returns = result[2]
     volatility = result[3]
@@ -108,13 +109,13 @@ def load_all_optimized_portfolios():
 
     portfolios = []
     for row in results:
-        name = row[1]
-        serialized_weights = row[2]
-        weights = json.loads(serialized_weights)
-        expected_returns = row[3]
-        volatility = row[4]
-        sharpe_ratio = row[5]
-        portfolio = name, weights, expected_returns, volatility, sharpe_ratio
+        name = row[0]
+        clean_serialized_weights = row[1]
+        clean_weights = json.loads(clean_serialized_weights)
+        expected_returns = row[2]
+        volatility = row[3]
+        sharpe_ratio = row[4]
+        portfolio = name, clean_weights, expected_returns, volatility, sharpe_ratio
         portfolios.append(portfolio)
 
     return portfolios
