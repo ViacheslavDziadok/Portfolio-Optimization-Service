@@ -67,6 +67,7 @@ class PortfolioOptimizer:
 
     def optimize_mean_variance(self) -> OptimizedPortfolio:
         mu = expected_returns.mean_historical_return(self.stock_data)
+        returns = self.stock_data.pct_change().dropna(how="all")
         cov_matrix = CovarianceShrinkage(self.stock_data).ledoit_wolf()
 
         ef = EfficientFrontier(mu, cov_matrix)
@@ -90,17 +91,20 @@ class PortfolioOptimizer:
 
         # TODO: Sentiment scores or user's views?
         viewdict = {}
+        influence_coef = 100.0
         if self.news_sentiment_scores is not None:
             # Use sentiment scores to create absolute views
             for ticker in self.stock_data.columns:
                 if ticker in self.news_sentiment_scores:
-                    viewdict[ticker] = self.news_sentiment_scores[ticker] / 100.0
-        else:
-            # Example views on stocks (replace with your views)
-            viewdict = {
-                # "TSLA": 0.1,  # Stock 0 will return 10%
-                # "F": -0.05  # Stock 3 will return -5%
-            }
+                    viewdict[ticker] += self.news_sentiment_scores[ticker] / influence_coef
+        # Example views on stocks
+        viewdict = {
+            #"TSLA": 0.20,  # Stock 0 will return 50%
+            #"F": -0.05,  # Stock 3 will return -5%
+            #"KO": -0.05,  # Stock 2 will return -5%
+            #"MSFT": 0.50, # Stock 1 will return 50%
+            #"GILD": 0.10 # Stock 4 will return 10%
+        }
 
         risk_aversion = int(1 / self.risk_tolerance)  # Risk aversion parameter
         bl = BlackLittermanModel(cov_matrix, pi=market_prior, absolute_views=viewdict, risk_aversion=risk_aversion)
@@ -110,14 +114,14 @@ class PortfolioOptimizer:
         posterior_cov_matrix = bl.bl_cov()
 
         # Calculate optimal weights using Efficient Frontier with the Black-Litterman expected returns and covariance matrix
-        ef = EfficientFrontier(posterior_returns, posterior_cov_matrix)
+        ef = EfficientFrontier(posterior_returns, posterior_cov_matrix, weight_bounds=(0, 0.25))
 
         # 
         try:
             ef.max_sharpe()
         except exceptions.OptimizationError:
             print("OptimizationError: Could not find a portfolio with the given constraints. Trying another solver...")
-            ef = EfficientFrontier(posterior_returns, posterior_cov_matrix)
+            ef = EfficientFrontier(posterior_returns, posterior_cov_matrix, weight_bounds=(0, 0.25))
             ef.efficient_risk(target_volatility=0.3)
         
         # Calculate optimized weights and portfolio performance

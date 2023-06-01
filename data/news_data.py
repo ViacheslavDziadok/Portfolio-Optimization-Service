@@ -31,11 +31,16 @@ def fetch_news_data(tickers, n_articles=1, load_from_database=False):
         today = datetime.today().strftime('%Y-%m-%d')
         month_ago = (datetime.today() - timedelta(days=30)).strftime('%Y-%m-%d')
         for ticker in tickers:
-            url = f"https://newsapi.org/v2/top-headlines?q={ticker}&from={month_ago}&to={today}&category=business&pageSize={n_articles}&apiKey={API_KEY}"
-            response = requests.get(url)
-            articles_ticker = pd.DataFrame(response.json()["articles"])
-            articles_ticker["ticker"] = ticker
-            articles = pd.concat([articles, articles_ticker], ignore_index=True)
+            try:
+                url = f"https://newsapi.org/v2/top-headlines?q={ticker}&from={month_ago}&to={today}&category=business&pageSize={n_articles}&apiKey={API_KEY}"
+                response = requests.get(url)
+                articles_ticker = pd.DataFrame(response.json()["articles"])
+                articles_ticker["ticker"] = ticker
+                articles = pd.concat([articles, articles_ticker], ignore_index=True)
+            except Exception as e:
+                print(f"Error fetching news data for {ticker}, reason - {e}")
+                return None
+
 
         # Pre-process articles
         articles["text"] = articles["title"] + " " + articles["description"]
@@ -59,6 +64,8 @@ def fetch_news_data(tickers, n_articles=1, load_from_database=False):
     return articles
 
 def get_sentiment_scores(articles):
+    if articles is None:
+        return None
     # Aggregate sentiment scores by ticker symbol
     sentiment_scores = articles.groupby("ticker")["sentiment"].mean().to_dict()
     return sentiment_scores

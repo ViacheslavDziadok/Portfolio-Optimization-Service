@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Company Selection</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>Portfolio Optimization Service</h1>
+        <form action="/" method="post">
+            <div class="form-group">
+                <label for="start-date">Start Date:</label>
+                <input type="date" id="start-date" value="2021-01-01" name="start-date" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label for="end-date">End Date:</label>
+                <input type="date" id="end-date" value="2022-01-01" name="end-date" class="form-control" required>
+            </div>
+            <h2>Select Companies:</h2>
+            <!-- Add the select all/deselect all button -->
+            <button type="button" id="select-deselect-btn">Select All</button>
+            <br>
+            <!-- Add the checkboxes for each company -->
+            <div class="company-column">
+                {% for ticker, company in companies.items() %}
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="companies[]" value="{{ ticker }}" id="{{ ticker }}">
+                        <label class="form-check-label" for="{{ ticker }}">{{ company }}</label>
+                    </div>
+                {% endfor %}
+            </div>
+            <br><br>
+            <button type="submit" class="btn btn-primary">Submit</button>
+        </form>
+    </div>
+    <script type="text/javascript" src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>

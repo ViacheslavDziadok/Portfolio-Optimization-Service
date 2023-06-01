@@ -1,0 +1,18 @@
+.company-icon {
+    width: 100px;
+    height: 100px;
+}
+
+.company-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.company-item img {
+    margin-right: 10px;
+}
+
+.company-column {
+    column-count: 3;
+}

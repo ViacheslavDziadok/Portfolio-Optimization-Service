@@ -148,7 +148,11 @@ def plot_portfolios(portfolios):
     # Move the title to the right
     fig.update_layout(title_x=0.475, title_y=0.95)
 
-    fig.show()
+    # fig.show()
+
+    graph_data = fig.to_html(full_html=False)
+
+    return graph_data
 
 def zoom(portfolio_returns, portfolio_volatilities, zoom_percent):
     x_max = max(portfolio_returns)

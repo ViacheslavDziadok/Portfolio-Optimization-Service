@@ -12,7 +12,7 @@ def connect_to_database():
     connection = pyodbc.connect(connection_string)
     return connection
 
-# Tickers
+# region Tickers
 def store_tickers(tickers):
     connection = connect_to_database()
     # Loop through tickers and insert data into SQL Server
@@ -39,8 +39,36 @@ def load_tickers():
     # Close the cursor and connection
     cursor.close()
     return tickers
+# endregion
 
-# Articles
+# region Stock Prices
+def store_stock_prices(stock_prices):
+    connection = connect_to_database()
+    cursor = connection.cursor()
+    for stock_price in stock_prices.itertuples(index=False):
+        ticker_id = get_ticker_id(stock_price.ticker)  # Implement a function to retrieve the TickerID for the given ticker symbol
+        if ticker_id is not None:
+            date = stock_price.date
+            adj_close = stock_price.adj_close
+            volume = stock_price.volume
+            cursor.execute("INSERT INTO StockPrices (TickerID, Date, AdjClose, Volume) VALUES (?, ?, ?, ?)",
+                           ticker_id, date, adj_close, volume)
+    connection.commit()
+    connection.close()
+
+def load_stock_prices():
+    connection = connect_to_database()
+    cursor = connection.cursor()
+    query = "SELECT t.Name, sp.Date, sp.AdjClose, sp.Volume FROM StockPrices sp JOIN Tickers t ON sp.TickerID = t.ID"
+    cursor.execute(query)
+    rows = cursor.fetchall()
+    connection.close()
+
+    stock_prices = pd.DataFrame(rows, columns=["ticker", "date", "adj_close", "volume"])
+    return stock_prices
+# endregion
+
+# region Articles
 def store_articles(articles):
     connection = connect_to_database()
     cursor = connection.cursor()
@@ -63,8 +91,9 @@ def load_articles():
     
     articles = pd.DataFrame(articles_data, columns=["ticker", "title", "description", "sentiment"])
     return articles
+# endregion
 
-# Optimized portfolios
+# region Optimized portfolios
 def store_optimized_portfolio(portfolio):
     connection = connect_to_database()
     cursor = connection.cursor()
@@ -119,3 +148,4 @@ def load_all_optimized_portfolios():
         portfolios.append(portfolio)
 
     return portfolios
+# endregion

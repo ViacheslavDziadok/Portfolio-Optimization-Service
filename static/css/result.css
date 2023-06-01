@@ -1,0 +1,4 @@
+html, body, .plotly-graph-div {
+    width: calc(100% - 16px);
+    height: calc(100% - 16px);
+}
